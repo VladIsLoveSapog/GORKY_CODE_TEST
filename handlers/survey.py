@@ -1,14 +1,14 @@
 # handlers/survey.py
+from dataclasses import dataclass
 from aiogram import Router, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from states.survey import SurveyStates
-from typing import Optional
+from typing import Optional, Tuple
 from logger import logger
 from aiogram.enums import ParseMode, ContentType
 
-import sessions_data
 
 
 
@@ -95,7 +95,6 @@ async def handle_location(message: Message, state: FSMContext):
     user_id = message.from_user.id
     lat = message.location.latitude
     lon = message.location.longitude
-    #await state.update_data(location=f"{lat},{lon}")
     logger.info(f"Пользователь {user_id} ввел свое местоположение: широта {lat} долгота {lon}.")   
 
     data = await state.get_data()
@@ -105,26 +104,8 @@ async def handle_location(message: Message, state: FSMContext):
         f"Время: {data['time']} мин\n"
         f"Локация: {lat} {lon}",
     )
-    from asyncio import create_task
-    create_task(sessions_data.process_request((message.from_user.id, 
-                                               sessions_data.UserAnswers(data['interests'],data['time'],(lat,lon)))))
+
+    from algorithm.route_construction import create_new_route
+    await create_new_route((lat,lon),user_id)
     await state.clear()
-
-
-#Для ввода текста вручную и для теста
-#@router.message(SurveyStates.location, F.text)
-async def location_text_fallback(message: Message, state: FSMContext):
-    await state.update_data(location=message.text.strip())
-    data = await state.get_data()
-    await message.answer(
-        f"Спасибо! Ваши данные:\n"
-        f"Интересы: {data['interests']}\n"
-        f"Время: {data['time']} мин\n"
-        f"Локация: {data['location']}",
-    )
-    from asyncio import create_task
-    create_task(sessions_data.process_request((message.from_user.id, 
-                                               sessions_data.UserAnswers(data['interests'],data['location'],data['time']))))
-    await state.clear()
-
 #--------------------------------------------------------------------------------------------------#

@@ -1,9 +1,9 @@
-from sessions_data import *
+from typing import Tuple
 from logger import logger
 from algorithm.map import *
 import math
 import asyncio
-
+from bot_instance import bot
 import time, os
 
 from aiogram import Bot, Dispatcher, F, Router
@@ -40,10 +40,8 @@ def keyboard() -> ReplyKeyboardMarkup:
 
 
 
-async def create_new_route(data : UserAnswers, id : str):
-    loc = data.location
-    #lat = float(getattr(loc, "latitude", 0.0))
-    #lon = float(getattr(loc, "longitude", 0.0))
+async def create_new_route(location : Tuple[str,str], id : str):
+    loc = location
     (lat,lon) = loc
     logger.info(f"Запускаем поиск пути для коориднат {lat} {lon}")
     user_link = yandex_place_link(lat, lon)
