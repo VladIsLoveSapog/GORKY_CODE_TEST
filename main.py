@@ -1,23 +1,15 @@
-import token_parsing as token
-from bot import bot,dp
-import handlers.start
-from logger import logger
+import logging
 import asyncio
-from handlers import survey_router
 
-dp.include_router(survey_router)
-dp.include_router(handlers.start.router)
+from bot import bot, router, dp
+from dataset import read_df, read_json
+
+logging.basicConfig(level=logging.INFO)
 
 async def main():
-    logger.info("Бот запущен")
-    try:
-        await dp.start_polling(bot)
-    except Exception as e:
-        logger.exception("Критическая ошибка в polling")
+    dp.include_router(router)
+    await dp.start_polling(bot)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.run(main())
-
-
-

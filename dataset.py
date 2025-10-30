@@ -1,5 +1,26 @@
 import re
+import html
+import json
+
 import pandas as pd
+
+XLS_TAG_RE = re.compile(r"<[^>]+>")
+
+XLSX_PATH = "cultural_objects_mnn.xlsx"
+JSON_PATH = "category_id_to_tags.json"
+
+def clean_html(text: object) -> object:
+    """Очистка текста pandas от html"""
+    if pd.isna(text):
+        return text
+
+    s = str(text)
+    s = html.unescape(s)
+    s = XLS_TAG_RE.sub(" ", s)
+    s = s.replace("\xa0", " ")
+    s = re.sub(r"[ \t\r\f\v]+", " ", s)
+    s = re.sub(r"\s*\n\s*", "\n", s)
+    return s.strip()
 
 def parse_point(s: str):
     """
@@ -15,22 +36,24 @@ def parse_point(s: str):
     m = re.search(r"POINT\s*\(\s*([+-]?\d+(?:\.\d+)?)\s+([+-]?\d+(?:\.\d+)?)\s*\)", s, flags=re.I)
     return (float(m.group(2)), float(m.group(1)))
 
-# Разбиваем coordinate на два отдельных столбца
-df = pd.read_excel('cultural_objects_mnn.xlsx', engine="openpyxl")
-df[["lat", "lot"]] = df["coordinate"].apply(parse_point).apply(pd.Series).astype("float64")
 
-# избавляемся от coordinate из за ненадобности
-df.drop(columns=["coordinate"], inplace=True)
+def read_df(path: str = XLSX_PATH) -> pd.DataFrame:
+    # Чтение датасета
+    df = pd.read_excel(path, engine="openpyxl")
 
-category_map = {
- "1": {"история", "скульптура", "наука/техника"},
- "2": {"парки", "история", "развлечения"},
- "3": {"архитектура", "история", "музеи"},
- "4": {"набережная", "панорамы", "парки"},
- "5": {"архитектура", "история", "религия"},
- "7": {"музеи", "история", "архитектура"},
- "6": {"библиотека", "музеи", "театр"},
- "8": {"театр", "история", "развлечения"},
- "9": {"архитектура", "история", "необычно"},
- "10": {"история", "парки", "развлечения"},
-}
+    # Очистка колонок от html
+    df['description'] = df['description'].map(clean_html)
+    df['title'] = df['title'].map(clean_html)
+
+    # Разбиваем coordinate на два отдельных столбца
+    df[["lat", "lot"]] = df["coordinate"].apply(parse_point).apply(pd.Series).astype("float64")
+
+    # избавляемся от coordinate из за ненадобности
+    df.drop(columns=["coordinate"], inplace=True)
+
+    return df
+
+
+def read_json(path: str = JSON_PATH) -> dict:
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)

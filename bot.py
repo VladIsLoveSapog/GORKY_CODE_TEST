@@ -1,42 +1,47 @@
-import logging
 import math
 import asyncio
+import re
+import pandas as pd
 
 from aiogram.client.default import DefaultBotProperties
 from aiogram import Bot, Dispatcher, F, Router
-from aiogram.enums import ParseMode, ContentType
+from aiogram.enums import ParseMode
 from aiogram.filters.command import Command
-from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
-from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, FSInputFile
-from aiogram import F
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup
+from aiogram.fsm.context import FSMContext
 
+from state import UserState
 from map import *
+from dataset import read_df, read_json
+from giga import ask_gigachat
 
 START_MESSAGE = """
-Привет, я был разработан в рамках тествого задания для хакатона GORKYCODE2025.
-я помогу найти ближайшие достопримечательности на основе твоих интересов и проложу маршрут к ним.
+Привет, я был разработан в рамках тествого задания для хакатона GORKYCODE2025.\n
+Я помогу найти ближайшие достопримечательности на основе твоих интересов и проложу маршрут к ним.\n
 Нажми кнопку 'Продолжить'.
 """
 
 SEND_LOCATION_MESSAGE = "📍 Отправить текущую локацию"
 SEND_LOCATION_PLACEHOLDER = "Пришлите геопозицию…"
 
-RESET_BTN = "🔄 Сброс"
+CONTINUE_BTN = "Продолжить"
 
+RESET_BTN = "🔄 Сброс"
 
 POINTS_NUMBER = 4
 
 
+df = read_df()
+category_tags = read_json()
 
-# Включаем логирование, чтобы не пропустить важные сообщения
-logging.basicConfig(level=logging.INFO)
+
 
 def read_tg_token() -> str:
     with open("tg.cert", "r") as f:
         return f.readline().rstrip("\n")
 
 # API_TOKEN = read_tg_token()
-API_TOKEN = "8344918974:AAFxzjCFQFckD_lp8RbDPy0-qABiS7_Sukk"
+API_TOKEN = "YOUR_TOKEN"
 
 MIN_WALK_SPEED = 2
 
@@ -111,6 +116,88 @@ def calc_eta(distance_m: float, route_duration_sec: float):
     return math.ceil(max(eta_model_min, eta_floor_min))
 
 
+def start_keyboard() -> ReplyKeyboardMarkup:
+        return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=CONTINUE_BTN)],
+            [KeyboardButton(text=RESET_BTN)],
+        ],
+        resize_keyboard=True
+    )
+
+
+@router.message(UserState.waiting_for_interests)
+async def handle_interests(message: Message, state: FSMContext):
+    user_input = message.text.strip()
+
+    # Сформировать промт на основе CATEGORY_TAGS
+    prompt_parts = ["Вот категории и связанные с ними ключевые слова:"]
+    for cat_id, tags in category_tags.items():
+        prompt_parts.append(f"{cat_id} — {', '.join(tags)}")
+    prompt_parts.append(f"\nПользователь написал: \"{user_input}\"")
+    prompt_parts.append("Назови номера категорий, которые соответствуют интересам пользователя.")
+    prompt = "\n".join(prompt_parts)
+
+    await message.answer("🤖 Анализирую интересы...")
+
+    model_response = await ask_gigachat(prompt)
+
+    # Извлечь category_ids (цифры)
+    category_ids = list(map(int, re.findall(r"\d+", model_response)))
+
+    if not category_ids:
+        await message.answer("Не удалось распознать категории. Попробуйте переформулировать или нажмите 🔄 Сброс.")
+        return
+
+    # Сохраняем найденные категории
+    await state.update_data(category_ids=category_ids)
+
+    await message.answer("Сколько у вас есть свободного времени в часах?", reply_markup=start_keyboard())
+    await state.set_state(UserState.waiting_for_time)
+
+
+@router.message(UserState.waiting_for_time)
+async def handle_time_input(message: Message, state: FSMContext):
+    user_text = message.text.strip()
+
+    # Промт к GigaChat
+    prompt = (
+        f"Пользователь написал: \"{user_text}\".\n"
+        "Определи, сколько часов указано. Верни только одно целое число без лишних слов."
+    )
+
+    await message.answer("Определяю доступное время...")
+
+    response = await ask_gigachat(prompt)
+    match = re.search(r"\d+", response)
+
+    if not match:
+        await message.answer("Не удалось распознать количество часов. Попробуйте снова или нажмите 🔄 Сброс.")
+        return
+
+    hours = int(match.group())
+    minutes = hours * 60
+
+    # Сохраняем в FSM
+    await state.update_data(available_minutes=minutes)
+
+    # Предлагаем отправить координаты
+    location_kb = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Отправить текущую локацию", request_location=True)],
+            [KeyboardButton(text=RESET_BTN)]
+        ],
+        resize_keyboard=True,
+        input_field_placeholder="Нажмите, чтобы отправить геопозицию"
+    )
+
+    await message.answer(
+        "📍 Теперь отправьте вашу текущую геолокацию, чтобы я нашёл ближайшие подходящие места.",
+        reply_markup=location_kb
+    )
+
+    await state.set_state(UserState.waiting_for_location)
+
 
 def keyboard() -> ReplyKeyboardMarkup:
     return ReplyKeyboardMarkup(
@@ -136,67 +223,108 @@ async def ack_location(message: Message,
 
 # Хэндлер на команду /start
 @dp.message(Command("start"))
-async def start(message: Message) -> None:
+async def start(message: Message, state: FSMContext) -> None:
+    await state.clear()
     await message.answer(
         START_MESSAGE,
-        reply_markup=keyboard(),
+        reply_markup=start_keyboard(),
     )
-
 
 @dp.message(F.text == RESET_BTN)
 @dp.message(Command("reset"))
-async def reset_to_start(message: Message) -> None:
+async def reset_to_start(message: Message, state: FSMContext) -> None:
     """
     Обработчик кнопки «Сброс» и команды /reset — возвращаемся к стартовому экрану
     """
-    await start(message)
+    await start(message, start)
 
 
-# TODO: коммент
-@router.message(F.content_type == ContentType.LOCATION)
-@router.message(F.location)
-async def handle_location(message: Message) -> None:
-    """
-    Получили точку → оценили все цели → показали топ-N с ETA и дистанцией.
-    """
-    src_lat, src_lon = get_user_coords(message)
+@router.message(F.text == CONTINUE_BTN)
+async def ask_interests(message: Message, state: FSMContext):
+    await state.set_state(UserState.waiting_for_interests)
 
-    ack_location(message, src_lat, src_lon)
+    kb = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=RESET_BTN)]],
+        resize_keyboard=True
+    )
 
-    # Готовим вход для OSRM /table
-    destination_coords = [(d[0], d[1]) for d in DESTINATIONS]  # [(lat, lon), ...]
-    titles = [d[2] for d in DESTINATIONS]
+    await message.answer(
+        "Места какой направленности вы хотели бы посетить?",
+        reply_markup=kb
+    )
 
-    # Получаем оценки времени до всех точек и выбираем POINTS_NUMBER ближайших
-    durations_sec = osrm_table(src_lat, src_lon, destination_coords)[1:]
-    top_idxes = get_top_points(durations_sec)
 
-    # Для ближайших точек получаем детальные координаты и описание
-    for i in top_idxes:
-        dst_lat, dst_lon = destination_coords[i]
-        name = titles[i]
+@router.message(F.location, UserState.waiting_for_location)
+async def handle_location(message: Message, state: FSMContext):
+    user_lat = message.location.latitude
+    user_lon = message.location.longitude
 
-        route_duration_sec, distance_m = try_osrm_route(src_lat, src_lon,
-                                                        dst_lat, dst_lon)
+    await message.answer("📍 Геолокация получена. Ищу подходящие места…")
 
-        eta = calc_eta(distance_m, route_duration_sec)
-        dist_km = round(float(distance_m) / 1000.0, 2)
-        route_link = yandex_route_link(src_lat, src_lon,
-                                       dst_lat, dst_lon)
+    data = await state.get_data()
+    category_ids = data.get("category_ids", [])
+    available_minutes = data.get("available_minutes", 0)
+
+    # Фильтрация по категориям
+    filtered_df = df[df["category_id"].isin(category_ids)]
+
+    if filtered_df.empty:
+        await message.answer("😕 Не нашлось подходящих мест для выбранных категорий.")
+        return
+
+    # 10 случайных записей
+    candidates = filtered_df.sample(min(10, len(filtered_df)))
+    destinations = list(zip(candidates.lat, candidates.lot))
+    titles = candidates.title.tolist()
+    descriptions = candidates.description.tolist()
+
+    # OSRM: матрица расстояний
+    durations_all = await osrm_table(user_lat, user_lon, destinations)
+    durations_sec = durations_all[1:]
+
+    # Топ-N ближайших
+    top_idx = get_top_points(durations_sec)
+    results = await asyncio.gather(*[
+        get_osrm_route(user_lat, user_lon, destinations[i][0], destinations[i][1])
+        for i in top_idx
+    ])
+
+    final_messages = []
+
+    for i, (duration_sec, distance_m) in zip(top_idx, results):
+        minutes = math.ceil(duration_sec / 60)
+
+        if minutes > available_minutes:
+            continue  # долго идти — исключаем
+
+        title = titles[i]
+        raw_desc = descriptions[i]
+        lat, lon = destinations[i]
+        link = yandex_route_link(user_lat, user_lon, lat, lon)
+
+        # Промт для генерации краткого описания
+        desc_prompt = (
+            f"Название: {title}\n"
+            f"Описание: {raw_desc}\n\n"
+            f"Составь краткое описание (3-4 предложения) этого места для туриста."
+        )
+
+        short_desc = await ask_gigachat(desc_prompt)
 
         text = (
-            f"*{name}*.\n\n"
-            f"Примерное время в пути: *{eta}* мин."
-            f"Дистанция: *{dist_km}* км пешком.\n\n"
-            f"Маршрут на Яндекс Картах: {route_link}"
+            f"*{title}*\n\n"
+            f"⏱ Время в пути: *{minutes}* мин\n"
+            f"📍 Расстояние: *{round(distance_m / 1000, 2)}* км\n\n"
+            f"{short_desc}\n\n"
+            f"[Маршрут на Яндекс.Картах]({link})"
         )
-        await message.answer(text, disable_web_page_preview=True, reply_markup=keyboard())
 
+        final_messages.append(text)
 
-async def main():
-    dp.include_router(router)
-    await dp.start_polling(bot)
+    if not final_messages:
+        await message.answer("🙁 Не удалось найти места, до которых можно дойти за отведённое время.")
+    else:
+        for msg in final_messages:
+            await message.answer(msg, disable_web_page_preview=True, reply_markup=start_keyboard())
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    await state.clear()

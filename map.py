@@ -1,12 +1,12 @@
 import requests
+import aiohttp
 
 OSRM_BASE = "https://router.project-osrm.org"
 OSRM_PROFILE = "foot"
 
 YANDEX_MAP_MODE = "pedestrian"
 
-# TODO: поправить параметры
-def osrm_table(src_lat: float, src_lon: float,
+async def osrm_table(src_lat: float, src_lon: float,
                destination_coords: list[tuple[float, float]]) -> list[float]:
     """
     osrm/table для профиля OSRM_PROFILE, строит матрицу расстояний от начальной точки ко всем конечным точкам.
@@ -22,22 +22,20 @@ def osrm_table(src_lat: float, src_lon: float,
     coords = [f"{src_lon},{src_lat}"] + [f"{lon},{lat}" for lat, lon in destination_coords]
     coords_str = ";".join(coords)
 
-    r = requests.get(
-        f"{OSRM_BASE}/table/v1/{OSRM_PROFILE}/{coords_str}",
-        params={"sources": "0"},
-        timeout=20,
-    )
-    r.raise_for_status()
+    url = f"{OSRM_BASE}/table/v1/{OSRM_PROFILE}/{coords_str}"
 
-    j = r.json()
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+            async with session.get(url, params={"sources": "0"}) as r:
+                r.raise_for_status()
+                j = await r.json()
+
     durs = j.get("durations")
-
     if not durs or not durs[0]:
         raise Exception("OSRM /table: пустой ответ durations")
     return durs[0]
 
 
-def try_osrm_route(src_lat: float, src_lon: float,
+async def get_osrm_route(src_lat: float, src_lon: float,
                    dst_lat: float, dst_lon: float) -> tuple[float, float]:
     """
     osrm/route для профиля OSRM_PROFILE, строит маршрут от точки до точки с вычислением времени и расстояния
@@ -57,7 +55,11 @@ def try_osrm_route(src_lat: float, src_lon: float,
     r = requests.get(url, params=params, timeout=10)
     r.raise_for_status()
 
-    data = r.json()
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+        async with session.get(url, params=params) as r:
+            r.raise_for_status()
+            data = await r.json()
+
     route = data["routes"][0]
 
     duration: float = route["duration"]
