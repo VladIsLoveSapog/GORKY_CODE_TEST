@@ -138,7 +138,7 @@ async def handle_interests(message: Message, state: FSMContext):
     prompt_parts.append("Назови номера категорий, которые соответствуют интересам пользователя.")
     prompt = "\n".join(prompt_parts)
 
-    await message.answer("🤖 Анализирую интересы...")
+    await message.answer("Анализирую интересы...")
 
     model_response = await ask_gigachat(prompt)
 
@@ -269,7 +269,7 @@ async def handle_location(message: Message, state: FSMContext):
     filtered_df = df[df["category_id"].isin(category_ids)]
 
     if filtered_df.empty:
-        await message.answer("😕 Не нашлось подходящих мест для выбранных категорий.")
+        await message.answer("Не нашлось подходящих мест для выбранных категорий.")
         return
 
     # 10 случайных записей
@@ -289,7 +289,7 @@ async def handle_location(message: Message, state: FSMContext):
         for i in top_idx
     ])
 
-    final_messages = []
+    messages_count = 0
 
     for i, (duration_sec, distance_m) in zip(top_idx, results):
         minutes = math.ceil(duration_sec / 60)
@@ -319,12 +319,13 @@ async def handle_location(message: Message, state: FSMContext):
             f"[Маршрут на Яндекс.Картах]({link})"
         )
 
-        final_messages.append(text)
+        if not text:
+            continue
 
-    if not final_messages:
-        await message.answer("🙁 Не удалось найти места, до которых можно дойти за отведённое время.")
-    else:
-        for msg in final_messages:
-            await message.answer(msg, disable_web_page_preview=True, reply_markup=start_keyboard())
+        messages_count += 1
+        await message.answer(text, disable_web_page_preview=True, reply_markup=start_keyboard())
+
+    if messages_count == 0:
+        await message.answer("Не удалось найти места, до которых можно дойти за отведённое время.")
 
     await state.clear()
