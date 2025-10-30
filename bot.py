@@ -1,4 +1,3 @@
-
 import logging
 import math
 import asyncio
@@ -9,7 +8,7 @@ from aiogram import Bot, Dispatcher, F, Router
 from aiogram.enums import ParseMode, ContentType
 from aiogram.filters.command import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
-from aiogram.types import Message, KeyboardButton,  ReplyKeyboardMarkup, FSInputFile
+from aiogram.types import Message, KeyboardButton, ReplyKeyboardMarkup, FSInputFile
 from aiogram import F
 
 from map import *
@@ -17,7 +16,11 @@ from map import *
 # Включаем логирование, чтобы не пропустить важные сообщения
 logging.basicConfig(level=logging.INFO)
 
-API_TOKEN = 'YOUR_TOKEN'
+def read_tg_token() -> str:
+    with open("tg.cert", "r") as f:
+        return f.readline().rstrip("\n")
+
+API_TOKEN = read_tg_token()
 
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
@@ -39,7 +42,6 @@ DESTINATIONS = [
 RESET_BTN = "🔄 Сброс"
 
 
-
 # Хэндлер на команду /start
 @dp.message(Command("start"))
 async def start(message: Message) -> None:
@@ -48,6 +50,9 @@ async def start(message: Message) -> None:
         "Нажми кнопку ниже или пришли локацию через скрепку.",
         reply_markup=keyboard(),
     )
+
+
+
 
 
 def keyboard() -> ReplyKeyboardMarkup:
@@ -87,7 +92,7 @@ async def handle_location(message: Message) -> None:
             "✅ Геометка получена:\n"
             f"• Широта: <b>{lat:.6f}</b>\n"
             f"• Долгота: <b>{lon:.6f}</b>\n\n"
-             f"Открыть в Яндекс.Картах: <a href=\"{user_link}\">ссылка</a>\n\n"
+            f"Открыть в Яндекс.Картах: <a href=\"{user_link}\">ссылка</a>\n\n"
             "Считаю пешие ETA до 10 точек…"
         ),
         parse_mode=ParseMode.HTML,
@@ -119,10 +124,9 @@ async def handle_location(message: Message) -> None:
             dur_sec = durations_sec[i]
             dist_m = None
 
-
         MIN_WALK_SPEED = 1.9
         eta_floor = dist_m / MIN_WALK_SPEED / 60.0
-        eta_min = math.ceil(max(dur_sec/60.0, eta_floor))
+        eta_min = math.ceil(max(dur_sec / 60.0, eta_floor))
         dist_km = (None if dist_m is None else round(float(dist_m) / 1000.0, 2))
 
         point_link = yandex_place_link(dst_lat, dst_lon)
@@ -171,9 +175,9 @@ async def handle_location(message: Message) -> None:
     # 7) Отправляем список трёх ближайших
     profile_human = "пешком"
     text = (
-        f"Три ближайшие цели ({profile_human}, OSRM):\n\n"
-        + "\n".join(lines)
-        + "\n\nИсточник маршрутизации: OSRM · Данные карты: © OpenStreetMap contributors"
+            f"Три ближайшие цели ({profile_human}, OSRM):\n\n"
+            + "\n".join(lines)
+            + "\n\nИсточник маршрутизации: OSRM · Данные карты: © OpenStreetMap contributors"
     )
     await message.answer(text, disable_web_page_preview=False, reply_markup=keyboard())
 
@@ -181,6 +185,7 @@ async def handle_location(message: Message) -> None:
 async def main():
     dp.include_router(router)
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

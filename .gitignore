@@ -90,3 +90,8 @@ Thumbs.db
 # Poetry/Pipenv lock-файлы тоже НЕ игнорим:
 #   poetry.lock
 #   Pipfile.lock
+
+#------------------------
+# СЕРТЫ
+#------------------------
+*.cert
