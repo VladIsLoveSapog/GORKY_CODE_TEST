@@ -1,5 +1,5 @@
 import token_parsing as token
-from bot_instance import bot,dp
+from bot import bot,dp
 import handlers.start
 from logger import logger
 import asyncio
@@ -18,3 +18,6 @@ async def main():
 
 if __name__ == '__main__':
     asyncio.run(main())
+
+
+
