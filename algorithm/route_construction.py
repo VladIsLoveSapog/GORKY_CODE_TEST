@@ -55,7 +55,7 @@ async def create_new_route(location : Tuple[str,str], id : str):
         ),
         chat_id=id,
         disable_web_page_preview=True,
-        reply_markup=keyboard(),
+        #reply_markup=keyboard(),
     )
 
     # 3) Готовим вход для OSRM /table
@@ -66,7 +66,7 @@ async def create_new_route(location : Tuple[str,str], id : str):
     try:
         profile, durations_sec = try_osrm_table_seconds(lat, lon, dsts_latlon)
     except Exception as e:
-        await bot.send_message(chat_id=id, text=f"Не удалось посчитать ETA через OSRM: {e}", reply_markup=keyboard())
+        await bot.send_message(chat_id=id, text=f"Не удалось посчитать ETA через OSRM: {e}")
         return
 
     idx_sorted = sorted(range(len(durations_sec)), key=lambda i: durations_sec[i])
@@ -81,6 +81,7 @@ async def create_new_route(location : Tuple[str,str], id : str):
         except Exception:
             dur_sec = durations_sec[i]
             dist_m = None
+            logger.error(f"Не удалось выбрать точки для маршрута из точки {lat} {lon}")
 
         MIN_WALK_SPEED = 1.9
         eta_floor = dist_m / MIN_WALK_SPEED / 60.0
@@ -123,13 +124,13 @@ async def create_new_route(location : Tuple[str,str], id : str):
             f"Источник маршрутизации: OSRM · Карта: © OpenStreetMap contributors"
         )
 
-        await bot.send_photo(chat_id=id, photo=FSInputFile(fname), caption=caption, reply_markup=keyboard())
+        await bot.send_photo(chat_id=id, photo=FSInputFile(fname), caption=caption)
         try:
             os.remove(fname)
         except OSError:
             pass
     except Exception as e:
-        await bot.send_message(f"Не удалось построить картинку маршрута: {e}", reply_markup=keyboard())
+        await bot.send_message(f"Не удалось построить картинку маршрута: {e}")
 
     # 7) Отправляем список трёх ближайших
     profile_human = "пешком"

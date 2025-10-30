@@ -20,18 +20,13 @@ ERROR_WRONG_REQUEST_MESSAGE = """
 
 CONTINUE = "Продолжить"
 
-SESSION_NOT_FOUND_MESSAGE = """
-Сессия не найдена. Начните с /start.
-"""
-
-
 router = Router()
 
 #Старт-опроса-----------------------------------------------------------------------------------------#
 @router.message(F.text == CONTINUE)
 async def start_survey(message: Message, state: FSMContext):
     INTERESTS_QUESTION_MESSAGE = """
-    Напишите, что вам интересно — например: стрит-арт, история, кофейни, панорамы и т.д.
+    Напиши, что тебе интересно — например: стрит-арт, история, кофейни, панорамы и т.д.
     """
 
     await state.set_state(SurveyStates.interests)
@@ -44,7 +39,7 @@ async def start_survey(message: Message, state: FSMContext):
 @router.message(SurveyStates.interests)
 async def handle_interests(message: Message, state: FSMContext):
     TIME_QUESTION_MESSAGE = """
-    Сколько у вас времени на прогулку? Ответ укажите в минутах.
+    Сколько у тебя времени на прогулку? Ответ укажи в минутах.
     """
 
     await state.update_data(interests=message.text.strip())
@@ -60,7 +55,7 @@ async def handle_time(message: Message, state: FSMContext):
     """
 
     ERROR_TIME_INPUT_QUESTION_MESSAGE = """
-    Сколько у вас времени на прогулку? Ответ укажите в минутах целым числом в пределах от 1 до 1440. Например, 60
+    Сколько у тебя времени на прогулку? Ответ укажи в минутах целым числом в пределах от 1 до 1440. Например, 60
     """
 
     POSITION_QUESTION_MESSAGE = """
@@ -86,7 +81,18 @@ async def handle_time(message: Message, state: FSMContext):
     logger.info(f"Указанное пользователем {user_id} время {message.text} прошло валидацию.")
     await state.update_data(time=minutes)
     await state.set_state(SurveyStates.location)
-    await message.answer(POSITION_QUESTION_MESSAGE)
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Отправить текущую локацию", request_location=True)],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+        input_field_placeholder="Пришлите геопозицию…",
+    )
+
+    await message.answer(POSITION_QUESTION_MESSAGE,reply_markup=keyboard)
+    
 
 #Местоположение-----------------------------------------------------------------------------------------#
 @router.message(F.content_type == ContentType.LOCATION)
