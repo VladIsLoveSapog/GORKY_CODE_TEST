@@ -12,7 +12,7 @@ from algorithm.giga import *
 
 async def construct_route(location : Tuple[str,str],available_minutes : int,category_ids : list[int]) -> Optional[str]:
     MIN_WALK_SPEED = 2
-    POINTS_NUMBER = 4
+    POINTS_NUMBER = 5
 
     def get_top_points(durations:list[float]) -> list[int]:
         pairs = [(i, d) for i, d in enumerate(durations) if d is not None]
