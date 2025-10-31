@@ -11,7 +11,7 @@ async def osrm_table(src_lat: float, src_lon: float,
                      destination_coords: list[tuple[float, float]]) -> Optional[list[list[float]]]:
     coords = [f"{src_lon},{src_lat}"] + [f"{lon},{lat}" for lat, lon in destination_coords]
     coords_str = ";".join(coords)
-    print(coords)
+    #print(coords)
 
     url = f"{OSRM_BASE}/table/v1/{OSRM_PROFILE}/{coords_str}"
 

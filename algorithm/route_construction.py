@@ -30,11 +30,11 @@ async def construct_route(location: Tuple[str, str], available_minutes: int, cat
             f"Маршрут на [Яндекс.Картах]({link})"
         )
 
-    print(category_ids)
+    #print(category_ids)
     candidates = get_points(category_ids)
-    for c in candidates.values:
-        print(c[4])
-    print(candidates)
+    # for c in candidates.values:
+    #     print(c[4])
+    # print(candidates)
 
     destinations = list(zip(candidates.lat, candidates.lot))
     titles = candidates.title.tolist()
