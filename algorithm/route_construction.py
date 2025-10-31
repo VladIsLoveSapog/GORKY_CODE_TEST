@@ -12,7 +12,7 @@ from algorithm.giga import *
 
 async def construct_route(location : Tuple[str,str],available_minutes : int,category_ids : list[int]) -> Optional[str]:
     MIN_WALK_SPEED = 2
-    POINTS_NUMBER = 5
+    POINTS_NUMBER = 4
 
     def get_top_points(durations:list[float]) -> list[int]:
         pairs = [(i, d) for i, d in enumerate(durations) if d is not None]
@@ -42,14 +42,22 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
     (user_lat,user_lon) = location
 
     # OSRM: матрица расстояний
-    dist_matrix = await osrm_table(user_lat, user_lon, destinations)
+    dist_matrix = await osrm_table(user_lat, user_lon, destinations)[0][1:]
 
     # Ближайшие записи
     top_idx = get_top_points(dist_matrix)
+    positions = [(user_lat, user_lon)]
+    positions += [(destinations[i][0], destinations[i][1]) for i in top_idx]
     results = await asyncio.gather(*[
-        get_osrm_route(user_lat, user_lon, destinations[i][0], destinations[i][1])
-        for i in top_idx
+        get_osrm_route(positions[i][0], positions[i][1], positions[i + 1][0], positions[i + 1][1])
+        for i in range(len(positions) - 1)
     ])
+    # positions = [(user_lat, user_lon)]
+    # positions += [(destinations[i][0], destinations[i][1]) for i in top_idx]
+    # for i in range(len(positions) - 1):
+    #     results.append(
+    #         get_osrm_route(positions[i][0], positions[i][1], positions[i + 1][0], positions[i + 1][1])
+    #     )
 
     messages_count = 0
     messages = []

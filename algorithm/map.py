@@ -8,7 +8,7 @@ OSRM_PROFILE = "foot"
 YANDEX_MAP_MODE = "pedestrian"
 
 async def osrm_table(src_lat: float, src_lon: float,
-                     destination_coords: list[tuple[float, float]]) -> Optional[list[float]]:
+                     destination_coords: list[tuple[float, float]]) -> Optional[list[list[float]]]:
     coords = [f"{src_lon},{src_lat}"] + [f"{lon},{lat}" for lat, lon in destination_coords]
     coords_str = ";".join(coords)
     print(coords)
@@ -25,7 +25,7 @@ async def osrm_table(src_lat: float, src_lon: float,
          logger.warning("OSRM Table не смог найти матрицу")
          return None
         #raise Exception("OSRM /table: пустой ответ durations")
-    return durs[0][1:]
+    return durs
 
 
 async def get_osrm_route(src_lat: float, src_lon: float,
