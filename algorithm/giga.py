@@ -45,18 +45,27 @@ async def ask_category(input: str) -> list[int]:
 
 
 async def ask_time(input: str) -> str:
+    #prompt = (
+        #f"Пользователь написал: \"{input}\".\n"
+        #"Определи, сколько часов указано. "
+    #)
     prompt = (
-        f"Пользователь написал: \"{input}\".\n"
-        "Определи, сколько часов указано. "
-        #Тоже я дописал
-        "Верни только одно целое число без лишних слов."
-    )
+    f"Пользователь написал: \"{input}\".\n\n"
+    "Инструкции:\n"
+    "1. Извлеки из фразы пользователя количество часов.\n"
+    "2. Преобразуй это количество в число с плавающей точкой.\n"
+    "   - 'один час' -> 1.0\n"
+    "   - '2.5 ч' -> 2.5\n"
+    "   - 'сорок пять минут' -> 0.75\n"
+    "В ответе предоставь ТОЛЬКО число с плавающей точкой.\n"
+)
     response, valid = await ask_gigachat(prompt)
     if not valid:
         logger.warning(f"Не удалось получить время из запроса {input}")
         return None
     logger.info(f"Делаем запрос с промптом {prompt} и получаем ответ {response}")
-    return re.search(r"\d+", response)
+    #return re.search(r"\d+", response)
+    return re.search(r"\d+\.?\d*", response)
 
 
 async def ask_point_description(title: str, desc: str) -> str:

@@ -67,25 +67,27 @@ async def handle_time(message: Message, state: FSMContext):
     Отправьте свою геопозицию — оттуда начнём маршрут!
     """
 
-    async def validate_time(time : str) -> Optional[int]:
-        hours_to_minutes = lambda x : x * 60
+    async def validate_time(time : str) -> Optional[float]:
+        hours_to_minutes = lambda x : x * 60.0
         response = await ask_time(user_text)
         try:
-            hours = int(response.group())
+            hours = float(response.group())
             return hours_to_minutes(hours)
         except Exception:
-            logger.info(f"Указанное пользователем {message.from_user.id} время {message.text} не удалось преобразовать в int")
+            logger.info(f"Указанное пользователем {message.from_user.id} время {message.text} не удалось преобразовать во float")
             return None
 
     user_text = message.text.strip()
     user_id = message.from_user.id
     logger.info(f"Пользователь {user_id} указал время: {message.text}")
+    
     validated_time = await validate_time(user_text)
     if not validated_time:
         logger.info(f"Указанное пользователем {user_id} время {message.text} не прошло валидацию.")
         await message.answer(ERROR_TIME_INPUT_QUESTION_MESSAGE)
         return
     
+    validated_time = int(validated_time)
     logger.info(f"Указанное пользователем {user_id} время {message.text} прошло валидацию и было интерпретировано как {validated_time} минут")
     await state.update_data(time=validated_time)
     await state.set_state(SurveyStates.location)
