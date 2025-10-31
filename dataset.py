@@ -9,6 +9,8 @@ XLS_TAG_RE = re.compile(r"<[^>]+>")
 XLSX_PATH = "cultural_objects_mnn.xlsx"
 JSON_PATH = "category_id_to_tags.json"
 
+RECORDS_NUMBER = 12
+
 def clean_html(text: object) -> object:
     """Очистка текста pandas от html"""
     if pd.isna(text):
@@ -57,3 +59,11 @@ def read_df(path: str = XLSX_PATH) -> pd.DataFrame:
 def read_json(path: str = JSON_PATH) -> dict:
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+category_tags = read_json()
+
+def get_points(category_ids: list[str]) -> pd.DataFrame:
+    df = read_df()
+    filtered_df = df[df["category_id"].isin(category_ids)]
+
+    return filtered_df.sample(min(RECORDS_NUMBER, len(filtered_df)))
