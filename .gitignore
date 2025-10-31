@@ -62,7 +62,7 @@ secrets.json
 logs/
 tmp/
 temp/
-data/
+#data/
 datasets/
 *.csv
 *.tsv

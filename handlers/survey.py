@@ -27,7 +27,7 @@ router = Router()
 @router.message(F.text == "/reset")
 async def start_survey(message: Message, state: FSMContext):
     INTERESTS_QUESTION_MESSAGE = """
-    Напиши, что вам интересно — например: стрит-арт, история, кофейни, панорамы и т.д.
+    Напишите, что вам интересно — например: стрит-арт, история, кофейни, панорамы и т.д.
     """
     await state.set_state(SurveyStates.interests)
     await message.answer(

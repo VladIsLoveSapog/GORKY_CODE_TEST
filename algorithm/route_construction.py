@@ -53,6 +53,8 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
 
     messages_count = 0
     messages = []
+    last_lat = user_lat
+    last_lon = user_lon
     for i, (duration_sec, distance_m) in zip(top_idx, results):
         minutes = calc_eta(distance_m, duration_sec)
         if minutes > available_minutes:
@@ -62,7 +64,9 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
         raw_desc = descriptions[i]
         lat, loc = destinations[i]
         short_desc = await ask_point_description(title, raw_desc)
-        link = yandex_route_link(user_lat, user_lon, lat, loc)
+        link = yandex_route_link(last_lat, last_lon, lat, loc)
+        last_lat = lat
+        last_lon = loc
         messages_count += 1
         
         answer = create_point_message(title,minutes,
