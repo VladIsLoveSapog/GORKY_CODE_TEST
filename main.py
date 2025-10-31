@@ -1,13 +1,15 @@
 import logging
 import asyncio
+import token_parsing as token
+import handlers.start
+import handlers.survey
+from handlers.survey import *
+from bot_instance import *
 
-from bot import bot, router, dp
-from dataset import read_df, read_json
-
-logging.basicConfig(level=logging.INFO)
+dp.include_router(handlers.start.router)
+dp.include_router(handlers.survey.router)
 
 async def main():
-    dp.include_router(router)
     await dp.start_polling(bot)
 
 
