@@ -15,13 +15,14 @@ async def osrm_table(src_lat: float, src_lon: float,
 
     url = f"{OSRM_BASE}/table/v1/{OSRM_PROFILE}/{coords_str}"
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=50)) as session:
             async with session.get(url, params={"sources": "0"}) as r:
                 r.raise_for_status()
                 j = await r.json()
 
     durs = j.get("durations")
     if not durs or not durs[0]:
+         logger.warning("OSRM Table не смог найти матрицу")
          return None
         #raise Exception("OSRM /table: пустой ответ durations")
     return durs[0][1:]

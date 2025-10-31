@@ -33,8 +33,8 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
             f"{short_desc}\n\n"
             f"Маршрут на [Яндекс.Картах]({link})"
         )
-
     candidates = get_points(category_ids)
+    print(candidates)
     destinations = list(zip(candidates.lat, candidates.lot))
     titles = candidates.title.tolist()
     descriptions = candidates.description.tolist()
@@ -55,10 +55,16 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
     messages = []
     last_lat = user_lat
     last_lon = user_lon
+    total_time = 0
     for i, (duration_sec, distance_m) in zip(top_idx, results):
         minutes = calc_eta(distance_m, duration_sec)
-        if minutes > available_minutes:
+        if minutes + total_time > available_minutes:
+            #Не успеем дойти
             continue
+
+        total_time += minutes
+        if total_time > available_minutes:
+            break
 
         title = titles[i]
         raw_desc = descriptions[i]

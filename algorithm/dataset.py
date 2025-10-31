@@ -1,7 +1,7 @@
 import re
 import html
 import json
-
+import numpy as np
 import pandas as pd
 
 XLS_TAG_RE = re.compile(r"<[^>]+>")
@@ -9,7 +9,7 @@ XLS_TAG_RE = re.compile(r"<[^>]+>")
 XLSX_PATH = "./data/cultural_objects_mnn.xlsx"
 JSON_PATH = "./data/category_id_to_tags.json"
 
-RECORDS_NUMBER = 12
+RECORDS_NUMBER = 6
 
 
 def clean_html(text: object) -> object:
@@ -47,10 +47,20 @@ def read_json(path: str = JSON_PATH) -> dict:
 category_tags = read_json()
 
 
+    
+   
 def get_points(category_ids: list[str]) -> pd.DataFrame:
     df = read_df()
-    filtered_df = df[df["category_id"].isin(category_ids)]
-
+    category_ids = [int(ids) for ids in category_ids]
+    
+    def check_category(cat_value):
+        if isinstance(cat_value, str):
+            categories_in_cell = [cat.strip() for cat in cat_value.split(',')]
+            categories_in_cell = [int(cat) for cat in categories_in_cell]
+            return any(cat in category_ids for cat in categories_in_cell)
+        else:
+            return str(cat_value).strip() in category_ids
+    
+    filtered_df = df[df['category_id'].apply(check_category)]
+    
     return filtered_df.sample(min(RECORDS_NUMBER, len(filtered_df)))
-
-
