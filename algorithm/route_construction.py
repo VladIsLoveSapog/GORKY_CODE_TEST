@@ -15,11 +15,6 @@ async def construct_route(location: Tuple[str, str], available_minutes: int, cat
     MIN_WALK_SPEED = 2
     POINTS_NUMBER = 5
 
-    def get_top_points(durations: list[float]) -> list[int]:
-        pairs = [(i, d) for i, d in enumerate(durations) if d is not None]
-        pairs_sorted = sorted(pairs, key=lambda t: t[1])
-        return [i for i, _ in pairs_sorted]
-
     def calc_eta(distance_m: float, route_duration_sec: float):
         eta_floor_min = (distance_m / MIN_WALK_SPEED) / 60.0
         eta_model_min = route_duration_sec / 60.0
@@ -49,10 +44,8 @@ async def construct_route(location: Tuple[str, str], available_minutes: int, cat
 
     # OSRM: матрица расстояний
     table = await osrm_table(user_lat, user_lon, destinations)
-    #print(table)
 
     def findDestinations(visited: list[int]) -> list[int]:
-        #print(visited)
         last = visited[-1]
         cur_row = table[last]
         if len(visited) == len(cur_row):
@@ -63,25 +56,17 @@ async def construct_route(location: Tuple[str, str], available_minutes: int, cat
 
     dist_matrix = table[0][1:]
     positions = [(user_lat, user_lon)]
-    # Ближайшие записи
+    # Построение маршрута
     top_idx = findDestinations([0])
 
     top_idx = [i-1 for i in top_idx][1:]
-    print(top_idx)
-        #get_top_points(dist_matrix)[:POINTS_NUMBER]
+    #print(top_idx)
     positions += [(destinations[i][0], destinations[i][1]) for i in top_idx]
     positions = positions[:POINTS_NUMBER]
     results = await asyncio.gather(*[
         get_osrm_route(positions[i][0], positions[i][1], positions[i + 1][0], positions[i + 1][1])
         for i in range(len(positions) - 1)
     ])
-
-    # positions = [(user_lat, user_lon)]
-    # positions += [(destinations[i][0], destinations[i][1]) for i in top_idx]
-    # for i in range(len(positions) - 1):
-    #     results.append(
-    #         get_osrm_route(positions[i][0], positions[i][1], positions[i + 1][0], positions[i + 1][1])
-    #     )
 
     messages_count = 0
     messages = []
