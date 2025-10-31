@@ -24,11 +24,11 @@ router = Router()
 
 #Старт-опроса-----------------------------------------------------------------------------------------#
 @router.message(StateFilter(None), F.text)
+@router.message(F.text == "/reset")
 async def start_survey(message: Message, state: FSMContext):
     INTERESTS_QUESTION_MESSAGE = """
     Напиши, что вам интересно — например: стрит-арт, история, кофейни, панорамы и т.д.
     """
-
     await state.set_state(SurveyStates.interests)
     await message.answer(
         INTERESTS_QUESTION_MESSAGE,
@@ -109,8 +109,13 @@ async def handle_time(message: Message, state: FSMContext):
 @router.message(F.location)
 async def handle_location(message: Message, state: FSMContext):
     ERROR_NO_ROUTE_MESSAGE = """
-    К сожалению нам не удалось построить маршрут. Пожалуйста, перезапустите бота с помощью /start переформулируйте ваши запросы.
+    К сожалению нам не удалось построить маршрут. Пожалуйста, перезапустите бота с помощью /reset переформулируйте ваши запросы.
     """
+
+    FINAL_MESSAGE = """
+    Желаем вас насладиться прогулкой по этому маршруту. Если захотите воспользоваться ботом снова, напишите /reset или используйте кнопку снизу.
+    """
+
     user_id = message.from_user.id
     lat = message.location.latitude
     lon = message.location.longitude
@@ -132,5 +137,14 @@ async def handle_location(message: Message, state: FSMContext):
     else:
         for msg in routes_messages:
             logger.debug(f"Отвечаем {msg}")
-            await message.answer(msg)
+            await message.answer(msg, disable_web_page_preview=True)
+
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Заново", callback_data = "/reset")],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+    await message.answer(text = FINAL_MESSAGE,reply_markup=keyboard)
 #--------------------------------------------------------------------------------------------------#

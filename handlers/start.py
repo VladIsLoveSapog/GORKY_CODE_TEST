@@ -26,3 +26,4 @@ async def start(message: Message, state: FSMContext):
         START_MESSAGE,
         reply_markup=markup
     )
+

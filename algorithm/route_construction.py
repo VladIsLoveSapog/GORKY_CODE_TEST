@@ -39,15 +39,15 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
     titles = candidates.title.tolist()
     descriptions = candidates.description.tolist()
 
-    (lat,lon) = location
+    (user_lat,user_lon) = location
 
     # OSRM: матрица расстояний
-    dist_matrix = await osrm_table(lat, lon, destinations)
+    dist_matrix = await osrm_table(user_lat, user_lon, destinations)
 
     # Ближайшие записи
     top_idx = get_top_points(dist_matrix)
     results = await asyncio.gather(*[
-        get_osrm_route(lat, lon, destinations[i][0], destinations[i][1])
+        get_osrm_route(user_lat, user_lon, destinations[i][0], destinations[i][1])
         for i in top_idx
     ])
 
@@ -60,9 +60,9 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
 
         title = titles[i]
         raw_desc = descriptions[i]
-        lat, lon = destinations[i]
+        lat, loc = destinations[i]
         short_desc = await ask_point_description(title, raw_desc)
-        link = yandex_route_link(lat, lon, lat, lon)
+        link = yandex_route_link(user_lat, user_lon, lat, loc)
         messages_count += 1
         
         answer = create_point_message(title,minutes,
