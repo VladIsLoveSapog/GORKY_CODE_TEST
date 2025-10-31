@@ -38,7 +38,7 @@ async def ask_category(input: str) -> list[int]:
     response, valid = await ask_gigachat(prompt)
     logger.info(f"Делаем запрос для поиска категорий {prompt} и получаем ответ {response}")
     if valid:
-        return list(map(int, re.findall(r"\d+", response[0])))
+        return list(map(int, re.findall(r"\d+", response)))
 
     logger.warning(f"Не удалось сформировать категории из запроса {input}")
     return []

@@ -11,14 +11,38 @@ from aiogram.enums import ParseMode, ContentType
 from algorithm.giga import *
 from aiogram.filters import StateFilter
 
-
-
+INTERESTS_QUESTION_MESSAGE = """
+    Напишите, что вам интересно — например: история, панорамы и т.д.
+    """
 
 ERROR_WRONG_REQUEST_MESSAGE = """
-Ваше сообщение не было корректно обработано. Пожалуйста, следуйте инструкциям.
-"""
+    Ваше сообщение не было корректно обработано. Пожалуйста, следуйте инструкциям.
+    """
+
+TIME_QUESTION_MESSAGE = """
+    Сколько у вас времени на прогулку? Ответ укажите в часах.
+    """
 
 CONTINUE = "Продолжить"
+
+SEND_LOCATION_BUTTON_TEXT = """
+    Отправить моё местоположение
+    """
+
+ERROR_TIME_INPUT_QUESTION_MESSAGE = """
+    По какой-то причине ваше сообщение не удалось обработать. Пожалуйста, переформулируйте его.
+    """
+
+POSITION_QUESTION_MESSAGE = """
+    Отправьте свою геопозицию — оттуда начнём маршрут!
+    """
+ERROR_NO_ROUTE_MESSAGE = """
+    К сожалению нам не удалось построить маршрут. Пожалуйста, перезапустите бота с помощью /reset переформулируйте ваши запросы.
+    """
+
+FINAL_MESSAGE = """
+    Желаем вас насладиться прогулкой по этому маршруту. Если захотите воспользоваться ботом снова, напишите /reset или используйте кнопку снизу.
+    """
 
 router = Router()
 
@@ -26,9 +50,7 @@ router = Router()
 @router.message(StateFilter(None), F.text)
 @router.message(F.text == "/reset")
 async def start_survey(message: Message, state: FSMContext):
-    INTERESTS_QUESTION_MESSAGE = """
-    Напишите, что вам интересно — например: стрит-арт, история, кофейни, панорамы и т.д.
-    """
+
     await state.set_state(SurveyStates.interests)
     await message.answer(
         INTERESTS_QUESTION_MESSAGE,
@@ -38,9 +60,7 @@ async def start_survey(message: Message, state: FSMContext):
 #Интересы-----------------------------------------------------------------------------------------#
 @router.message(SurveyStates.interests)
 async def handle_interests(message: Message, state: FSMContext):
-    TIME_QUESTION_MESSAGE = """
-    Сколько у вас времени на прогулку? Ответ укажите в часах.
-    """
+
     category_ids = await ask_category(message.text.strip())
     if not category_ids:
         await message.answer("Не удалось обработать ваш запрос. Попробуйте переформулировать или напишите /start.")
@@ -55,17 +75,6 @@ async def handle_interests(message: Message, state: FSMContext):
 #Время-----------------------------------------------------------------------------------------#
 @router.message(SurveyStates.time)
 async def handle_time(message: Message, state: FSMContext):
-    SEND_LOCATION_BUTTON_TEXT = """
-    Отправить моё местоположение
-    """
-
-    ERROR_TIME_INPUT_QUESTION_MESSAGE = """
-    По какой-то причине ваше сообщение не удалось обработать. Пожалуйста, переформулируйте его.
-    """
-
-    POSITION_QUESTION_MESSAGE = """
-    Отправьте свою геопозицию — оттуда начнём маршрут!
-    """
 
     async def validate_time(time : str) -> Optional[float]:
         hours_to_minutes = lambda x : x * 60.0
@@ -108,13 +117,7 @@ async def handle_time(message: Message, state: FSMContext):
 @router.message(F.content_type == ContentType.LOCATION)
 @router.message(F.location)
 async def handle_location(message: Message, state: FSMContext):
-    ERROR_NO_ROUTE_MESSAGE = """
-    К сожалению нам не удалось построить маршрут. Пожалуйста, перезапустите бота с помощью /reset переформулируйте ваши запросы.
-    """
 
-    FINAL_MESSAGE = """
-    Желаем вас насладиться прогулкой по этому маршруту. Если захотите воспользоваться ботом снова, напишите /reset или используйте кнопку снизу.
-    """
 
     user_id = message.from_user.id
     lat = message.location.latitude
@@ -129,7 +132,7 @@ async def handle_location(message: Message, state: FSMContext):
     )
 
     from algorithm.route_construction import construct_route
-    routes_messages = await construct_route((lat,lon),data["time"],data["interests"])
+    routes_messages = await construct_route((lat, lon),data["time"],data["interests"])
     logger.info(f"Сформирован маршрут {routes_messages}")
     await state.clear()
     if not routes_messages:
