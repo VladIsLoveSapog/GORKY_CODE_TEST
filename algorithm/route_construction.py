@@ -40,9 +40,9 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
     descriptions = candidates.description.tolist()
 
     (user_lat,user_lon) = location
-
+    table = await osrm_table(user_lat, user_lon, destinations)
     # OSRM: матрица расстояний
-    dist_matrix = await osrm_table(user_lat, user_lon, destinations)[0][1:]
+    dist_matrix = table[0][1:]
 
     # Ближайшие записи
     top_idx = get_top_points(dist_matrix)
@@ -52,6 +52,7 @@ async def construct_route(location : Tuple[str,str],available_minutes : int,cate
         get_osrm_route(positions[i][0], positions[i][1], positions[i + 1][0], positions[i + 1][1])
         for i in range(len(positions) - 1)
     ])
+
     # positions = [(user_lat, user_lon)]
     # positions += [(destinations[i][0], destinations[i][1]) for i in top_idx]
     # for i in range(len(positions) - 1):
