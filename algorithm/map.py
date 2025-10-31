@@ -4,7 +4,7 @@ import asyncio
 from logger import logger
 OSRM_BASE = "https://router.project-osrm.org"
 OSRM_PROFILE = "foot"
-
+TIMEOUT = 500
 YANDEX_MAP_MODE = "pedestrian"
 
 async def osrm_table(src_lat: float, src_lon: float,
@@ -15,12 +15,15 @@ async def osrm_table(src_lat: float, src_lon: float,
 
     url = f"{OSRM_BASE}/table/v1/{OSRM_PROFILE}/{coords_str}"
 
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=50)) as session:
-            async with session.get(url, params={"sources": "0"}) as r:
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=TIMEOUT)) as session:
+            async with session.get(url
+                    #, params={"sources": "0"}
+                                   ) as r:
                 r.raise_for_status()
                 j = await r.json()
 
     durs = j.get("durations")
+    #print(durs)
     if not durs or not durs[0]:
          logger.warning("OSRM Table не смог найти матрицу")
          return None
@@ -34,7 +37,7 @@ async def get_osrm_route(src_lat: float, src_lon: float,
     params = {"overview": "false"}
     async with aiohttp.ClientSession() as session:
         try:
-            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=10)) as resp:
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=TIMEOUT)) as resp:
                 data = await resp.json()
                 # обработка ответа
                 route = data['routes'][0]
